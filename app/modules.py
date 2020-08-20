@@ -74,7 +74,7 @@ class User(db.Model):
 
     def to_json(self, detail=False):
         data = {
-            "self": request.host_url[0:-1] + url_for('student_bp.info', sid=self.id),
+            "self": request.host_url[0:-1] + url_for('student_bp.info', uid=self.id),
             "uid": self.id,
             "avatar": Media.load_media_from_uuid(self.avatar, return_model=True).url if self.avatar is not None else None,
             "nickname": self.nickname,
@@ -131,7 +131,7 @@ class Student(db.Model):
     def to_json(self, detail=False):
         user = self.user
         data = {
-            "self": request.host_url[0:-1] + url_for('student_bp.info', sid=self.sid),
+            "self": request.host_url[0:-1] + url_for('student_bp.info', uid=self.id),
             "uid": user.id,
             "avatar": Media.load_media_from_uuid(user.avatar, return_model=True).url if user.avatar is not None else None,
             "nickname": user.nickname,
@@ -169,7 +169,7 @@ class Teacher(db.Model):
     def to_json(self, detail=False):
         user = self.user
         data = {
-            "self": request.host_url[0:-1] + url_for('teacher_bp.info', tid=self.tid),
+            "self": request.host_url[0:-1] + url_for('teacher_bp.info', uid=self.id),
             "uid": self.id,
             "avatar": Media.load_media_from_uuid(user.avatar, return_model=True).url if user.avatar is not None else None,
             "introduce": user.introduce,
@@ -367,7 +367,8 @@ class Task(db.Model):
             expires *= 60
         self.expires = expires
 
-    def to_json_as_student(self, user, detail=False):
+    def to_json_as_student(self, detail=False):
+        user = g.current_user.id
         key = "task_finished:"+str(self.id)
         if not r.sismember(key, user.id):
             finished = False
@@ -397,6 +398,7 @@ class Task(db.Model):
             data_detail = {
                 "problems": [prob.to_json(show_answer) for prob in self.problems]
             }
+
             if self.type == "exam":
                 key = "exam_begin:tid:{}:uid:{}".format(self.id, user.id)
                 exam_begin = r.get(key)
@@ -407,6 +409,7 @@ class Task(db.Model):
                     'exam_end': format_time(exam_begin + self.expires) if exam_begin is not None else None
                 }
                 data_detail.update(exam_status)
+
             data.update(data_detail)
         return data
 
@@ -423,11 +426,20 @@ class Task(db.Model):
             "max_score": self.max_score,
             "create_at": format_time(self.create_at)
         }
+        return data
+
+
+    def to_json_as_course(self, **options):
+        if g.current_user.id == self.teacher.user.id:
+            resp = self.to_json_as_teacher()
+        else:
+            resp = self.to_json_as_student(**options)
+        return resp
 
     @classmethod
     def list_to_json(cls, tasks, type_, **options):
         bp_map = {"teacher": "teacher_bp", "student": "student_bp", "course": "course_bp"}
-        schema_map = {"teacher": cls.to_json_teacher, "student": cls.to_json_student, "course": cls.to_json_student}
+        schema_map = {"teacher": cls.to_json_as_teacher, "student": cls.to_json_as_student, "course": cls.to_json_as_course}
         bp_name = bp_map[type_]
         schema = schema_map[type_]
         data = {
@@ -844,7 +856,9 @@ class Media(db.Model):
 
     @staticmethod
     def random_avatar(return_model=False):
-        url = request.host_url[:-1] + current_app.static_url_path + "/avatars/user/banner{}.jpg".format(random.choice([6, 7, 8, 13, 14]))
+        url = current_app.config["HOST_URL"] + current_app.static_url_path + \
+              "/avatars/user/banner{}.jpg".format(random.choice([6, 7, 8, 13, 14]))
+        print(url)
         new_avatar = Media(url)
         db.session.add(new_avatar)
         db.session.commit()

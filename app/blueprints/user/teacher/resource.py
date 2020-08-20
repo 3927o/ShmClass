@@ -3,10 +3,9 @@ import redis
 from flask import g
 from flask_restful import Resource
 
-from app.helpers import make_resp, validate_verify_code, api_abort
+from app.helpers import make_resp
 from app.interceptors import resource_found_required, login_required_as_teacher as login_required
-from app.interceptors import login_required as login_required_as_user
-from app.modules import Course, Task
+from app.modules import Course, Task, User
 from app.extensions import pool, db
 from app.blueprints.user.helpers import certificate_user
 
@@ -17,10 +16,10 @@ r = redis.Redis(connection_pool=pool)
 
 
 class TeacherInfoAPI(Resource):
-    # url: /teacher/<int:tid>/info
+    # url: /teacher/<int:uid>/info
     method_decorators = [resource_found_required("user")]
 
-    def get(self):
+    def get(self, uid):
         resp = g.current_user.teacher.to_json()
         return make_resp(resp)
 
@@ -67,7 +66,7 @@ class TeacherTaskListAPI(Resource):
 
 class TeacherCertificateAPI(Resource):
     # url: /teacher/info/certificate
-    method_decorators = [login_required_as_user]
+    method_decorators = [login_required]
 
     def post(self):
         data = teacher_certificate_reqparser.parse_args()
@@ -83,7 +82,7 @@ class TeacherCertificateAPI(Resource):
 
 class CertificateStatusAPI(Resource):
     # url: /teacher/certificate/status
-    method_decorators = [login_required_as_user]
+    method_decorators = [login_required]
 
     def get(self):
-        return make_resp(int(g.current_user.teacher.certificated))
+        return make_resp(int(g.current_user.certificated))

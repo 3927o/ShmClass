@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import json
+
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
 # SQLite URI compatible
@@ -14,6 +14,7 @@ else:
 class BaseConfig:
 
     SECRET_KEY = os.getenv('SECRET_KEY', os.urandom(16))
+    HOST_URL = "http://thunderclass.mr-lin.site"
 
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', prefix + os.path.join(basedir, 'data.db'))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -29,7 +30,7 @@ class BaseConfig:
 
     MAIL_SERVER = "smtp.qq.com"
     MAIL_USERNAME = "1624497311@qq.com"
-    MAIL_PASSWORD = "zvjmrrnsyvcvbega"
+    MAIL_PASSWORD = "ltqojhsakzvjhiba"
     MAIL_DEFAULT_SENDER = ("水火木课堂", "1624497311@qq.com")
     MAIL_USE_SSL = True
     MAIL_USE_TLS = False
@@ -43,8 +44,8 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     SECRET_KEY = os.getenv('SECRET_KEY', "secret_key")
+    HOST_URL = "http://127.0.0.1:5000"
     SQLALCHEMY_DATABASE_URI = 'sqlite:///'
-    # SQLALCHEMY_DATABASE_URI = 'mysql://root:123456@127.0.0.1/test'
     WTF_CSRF_ENABLED = False
 
 
@@ -54,9 +55,9 @@ class ProductionConfig(BaseConfig):
 
 class TestingConfig(BaseConfig):
     TESTING = True
+    HOST_URL = "http://127.0.0.1:5000"
     SECRET_KEY = os.getenv('SECRET_KEY', "secret_key")
     SQLALCHEMY_DATABASE_URI = 'sqlite:///'
-    # SQLALCHEMY_DATABASE_URI = 'mysql://root:123456@127.0.0.1/test'
     WTF_CSRF_ENABLED = False
 
 
@@ -65,3 +66,4 @@ config = {
     'production': ProductionConfig,
     'testing': TestingConfig
 }
+

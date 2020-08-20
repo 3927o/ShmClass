@@ -3,7 +3,7 @@ import pickle
 from flask import g
 from flask_restful import Resource
 
-from app.interceptors import login_required_as_student as login_required
+from app.interceptors import login_required_as_student as login_required, resource_found_required
 from app.helpers import make_resp, api_abort
 from app.modules import Course, Task
 from app.extensions import pool, db
@@ -16,15 +16,16 @@ r = redis.Redis(connection_pool=pool)
 
 
 class StudentInfoAPI(Resource):
-    # url: /student/<int:sid>/info
-    method_decorators = [login_required]
+    # url: /student/<int:uid>/info
+    method_decorators = [resource_found_required("user")]
 
-    def get(self):
-        resp = g.current_user.to_json()
+    def get(self, uid):
+        resp = g.current_user.student.to_json()
         return make_resp(resp)
 
 
 class CurrentStudentInfoAPI(Resource):
+    # url: /student/info
     method_decorators = [login_required]
 
     def get(self):
@@ -44,6 +45,7 @@ class CurrentStudentInfoAPI(Resource):
 
 
 class StudentCourseListAPI(Resource):
+    # url: /student/info/courses
     method_decorators = [login_required]
 
     def get(self):
@@ -53,6 +55,7 @@ class StudentCourseListAPI(Resource):
 
 
 class StudentTaskListAPI(Resource):
+    # url: /student/info/tasks
     method_decorators = [login_required]
 
     def get(self):
@@ -62,7 +65,7 @@ class StudentTaskListAPI(Resource):
 
 
 class StudentCertificateAPI(Resource):
-    # url: /student/info/certificate
+    # url: /student/certificate
     method_decorators = [login_required]
 
     def post(self):
