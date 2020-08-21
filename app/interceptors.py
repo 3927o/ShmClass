@@ -1,6 +1,6 @@
 import redis
 
-from flask import request, current_app, g
+from flask import request, g
 
 from app.extensions import pool
 from app.helpers import api_abort, get_current_course
@@ -29,7 +29,7 @@ def auth_required(f):
             g.current_token = access_token
             resp = f(*args, **kws)
             return resp
-        except:
+        except (ValueError, TypeError):
             pass
 
         # search access token
@@ -145,7 +145,7 @@ def role_required(role, resource_name="course"):
                 return api_abort(4041, "resource's course not found")
 
             real_role = user.judge_role(course)
-            if real_role != role:
+            if role != real_role:
                 return api_abort(4030, "you are not the {}".format(role))
 
             resp = f(*args, **kws)
@@ -153,6 +153,16 @@ def role_required(role, resource_name="course"):
         return decorator
 
     return wrappers
+
+
+def admin_required(f):
+    @login_required
+    def decorator(*args, **kws):
+        if not g.current_user.admin:
+            return api_abort(4031, "Admin Required")
+        resp = f(*args, **kws)
+        return resp
+    return decorator
 
 
 def find_resource_id(id_name):

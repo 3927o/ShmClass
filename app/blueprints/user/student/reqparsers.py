@@ -8,5 +8,5 @@ student_put_reqparser.add_argument("gender", type=str, location="json")
 
 stu_certificate_reqparser = RequestParser()
 stu_certificate_reqparser.add_argument('school', required=True, type=str, location='json')
-stu_certificate_reqparser.add_argument('student_id', required=True, type=str, location='json')
+stu_certificate_reqparser.add_argument('role_id', required=True, type=str, location='json')
 stu_certificate_reqparser.add_argument('certificate_code', required=True, type=str, location='json')

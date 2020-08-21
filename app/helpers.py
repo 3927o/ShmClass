@@ -1,8 +1,8 @@
 import time
 import redis
+import xlrd
 from hashlib import md5
 from flask import jsonify, Flask, g, current_app
-from werkzeug.http import HTTP_STATUS_CODES
 from werkzeug.exceptions import NotFound
 
 from .extensions import pool
@@ -110,7 +110,8 @@ def strptime(str_time):
     return time.mktime(time.strptime(str_time, "%Y/%m/%d %X"))
 
 
-def push_url_builder(stream_name, time, key="1b74cb987121964596c61e9176ba1e72", domain="rtmp://102433.livepush.myqcloud.com/live/"):
+def push_url_builder(stream_name, time,
+                     key="1b74cb987121964596c61e9176ba1e72", domain="rtmp://102433.livepush.myqcloud.com/live/"):
     txTime = hex(int(strptime(time)))[2:].upper()
     txSecret = md5((key+stream_name+txTime).encode("utf-8")).hexdigest()
     stream = "{}?txSecret={}&txTime={}".format(stream_name, txSecret, txTime)
@@ -138,3 +139,47 @@ def validate_verify_code(code_type, code, email_or_phone):
     r = redis.Redis(connection_pool=pool)
     true_code = r.get(key)
     return code == true_code
+
+
+def parse_excel(request, filename, transform=True):
+
+    file = request.files[filename]
+    f = file.stream.read()
+    data = xlrd.open_workbook(file_contents=f)
+    table = data.sheets()[0]
+    col_name = table.row_values(0)
+    li = list()
+
+    for i in range(1, table.nrows):  # iterate the rows
+        d = dict()
+        row_values = table.row_values(i)
+
+        for j in range(table.ncols):
+            key = col_name[j]
+            d[key] = row_values[j]
+
+        if transform:
+            d = excel_column_transformer(d)
+
+        li.append(d)
+    return li
+
+
+def excel_column_transformer(data):
+    transformer = {
+        "学校": "school",
+        "学号": "student_id",
+        "姓名": "name",
+        "教师id": "teacher_id",
+        "认证码": "certificate_code",
+        "年级": "grade",
+        "班级": "class_"
+    }
+    d = dict()
+    for key in data:
+        if key in transformer:
+            en_key = transformer[key]
+            d[en_key] = data[key]
+    d["certificate_code"] = str(int(d["certificate_code"]))
+    return d
+

@@ -105,11 +105,13 @@ class User(db.Model):
     
     def judge_role(self, course):
         if self.is_teacher(course):
-            return "teacher"
-        if self.is_student(course):
-            return "student"
+            role = "teacher"
+        elif self.is_student(course):
+            role = "student"
+        else:
+            role = "customer"
         
-        return "customer"
+        return role
 
 
 class Student(db.Model):
@@ -155,6 +157,7 @@ class Student(db.Model):
 
 
 class Teacher(db.Model):
+    teacher_id = db.Column(db.String(30))
     id = db.Column(db.Integer, db.ForeignKey("user.id"), index=True)
     tid = db.Column(db.Integer, primary_key=True, autoincrement=True)
     certificated = db.Column(db.Boolean, default=False)
@@ -182,6 +185,7 @@ class Teacher(db.Model):
             data_detail = {
                 "telephone": user.telephone,
                 "email": user.email,
+                "teacher_id": self.teacher_id
             }
             data.update(data_detail)
 
