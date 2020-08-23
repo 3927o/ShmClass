@@ -4,8 +4,8 @@ from flask import g
 from flask_restful import Resource
 
 from app.interceptors import login_required_as_student as login_required, resource_found_required
-from app.helpers import make_resp, api_abort
-from app.modules import Course, Task
+from app.helpers import make_resp
+from app.modules import Course, Task, page_to_json
 from app.extensions import pool, db
 from app.blueprints.user.helpers import certificate_user
 
@@ -50,7 +50,7 @@ class StudentCourseListAPI(Resource):
 
     def get(self):
         courses = g.current_user.courses
-        resp = Course.list_to_json(courses, "student")
+        resp = page_to_json(Course, courses, type_="student")
         return make_resp(resp)
 
 
@@ -60,7 +60,7 @@ class StudentTaskListAPI(Resource):
 
     def get(self):
         tasks = g.current_user.tasks
-        resp = Task.list_to_json(tasks, "student")
+        resp = page_to_json(Task, tasks, type_="student")
         return make_resp(resp)
 
 

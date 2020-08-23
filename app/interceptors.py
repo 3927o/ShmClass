@@ -2,7 +2,7 @@ import redis
 
 from flask import request, g
 
-from app.extensions import pool
+from app.extensions import pool, db
 from app.helpers import api_abort, get_current_course
 from app.modules import User, Discussion, Course, Task, Problem, TaskAnswer, Chapter, Comment, Notice, Media
 from app.blueprints.auth.helpers import get_token, load_token, zismember, generate_token_info
@@ -17,76 +17,90 @@ access_token_expires = BaseConfig.ACCESS_TOKEN_EXPIRES
 refresh_token_expires = BaseConfig.REFRESH_TOKEN_EXPIRES
 
 
-def auth_required(f):
-    # no need of user info, auth only
+def auth_required(allowed_anonymous=False):
 
-    def decorator(*args, **kws):
-        access_token, refresh_token = get_token()
+    def wrapper(f):
+        # no need of user info, auth only
 
-        # use for testing. while the access token is integer, it stands for a user whose id is it.
-        try:
-            access_token = int(access_token)
-            g.current_token = access_token
+        def decorator(*args, **kws):
+
+            # search access token
+            access_token, refresh_token = get_token()
+            if access_token is None:
+                if allowed_anonymous:
+                    access_token, refresh_token = 0, 0
+                else:
+                    return api_abort(4010, "access token is required")
+
+            # use for testing. while the access token is integer, it stands for a user whose id is it.
+            try:
+                access_token = int(access_token)
+                g.current_token = access_token
+                resp = f(*args, **kws)
+                return resp
+            except (ValueError, TypeError):
+                pass
+
+            # validate access token and go on request
+            if zismember(key_access_token, access_token):
+                g.current_token = key_access_token
+                resp = f(*args, **kws)
+                return resp
+
+            # search refresh token
+            if refresh_token is None:
+                return api_abort(4010, "bad access token, refresh token is required")
+
+            # validate refresh token, refresh it and go on request
+            if zismember(key_refresh_token, refresh_token):
+                user = load_token(refresh_token)
+                if user is None:
+                    return api_abort(4010, "Bad Token")
+
+                # refresh token and get new token info
+                r.srem(key_refresh_token, refresh_token)  # remove old refresh token from redis db
+                token_info = generate_token_info(user)
+                g.current_token = token_info["access_token"]
+
+                # go on response
+                resp = f(*args, **kws)
+                resp.update(token_info)
+                return resp
+
+            return f(*args, **kws)
+
+        return decorator
+
+    return wrapper
+
+
+def login_required(allowed_anonymous=False):
+
+    def wrapper(f):
+        # user info will be loaded into g.current_user
+
+        @auth_required(allowed_anonymous=allowed_anonymous)
+        def decorator(*args, **kws):
+            current_user = load_token(g.current_token)
+
+            # just an insurance
+            if current_user is None:
+                if not allowed_anonymous:
+                    return api_abort(4010, "Bad Token")
+                else:
+                    current_user = User("anonymous", "anonymous@anonymous.com", "anonymous")
+
+            g.current_user = current_user
             resp = f(*args, **kws)
             return resp
-        except (ValueError, TypeError):
-            pass
 
-        # search access token
-        if access_token is None:
-            return api_abort(4010, "access token is required")
+        return decorator
 
-        # validate access token and go on request
-        if zismember(key_access_token, access_token):
-            g.current_token = key_access_token
-            resp = f(*args, **kws)
-            return resp
-
-        # search refresh token
-        if refresh_token is None:
-            return api_abort(4010, "bad access token, refresh token is required")
-
-        # validate refresh token, refresh it and go on request
-        if zismember(key_refresh_token, refresh_token):
-            user = load_token(refresh_token)
-            if user is None:
-                return api_abort(4010, "Bad Token")
-
-            # refresh token and get new token info
-            r.srem(key_refresh_token, refresh_token)  # remove old refresh token from redis db
-            token_info = generate_token_info(user)
-            g.current_token = token_info["access_token"]
-
-            # go on response
-            resp = f(*args, **kws)
-            resp.update(token_info)
-            return resp
-
-        return f(*args, **kws)
-
-    return decorator
-
-
-def login_required(f):
-    # user info will be loaded into g.current_user
-
-    @auth_required
-    def decorator(*args, **kws):
-        current_user = load_token(g.current_token)
-
-        # just an insurance
-        if current_user is None:
-            return api_abort(4010, "Bad Token")
-
-        g.current_user = current_user
-        resp = f(*args, **kws)
-        return resp
-
-    return decorator
+    return wrapper
 
 
 def login_required_as_teacher(f):
-    @login_required
+    @login_required()
     def decorator(*args, **kws):
         g.current_user = g.current_user.teacher
 
@@ -99,7 +113,7 @@ def login_required_as_teacher(f):
 
 
 def login_required_as_student(f):
-    @login_required
+    @login_required()
     def decorator(*args, **kws):
         g.current_user = g.current_user.student
         resp = f(*args, **kws)
@@ -136,7 +150,7 @@ def role_required(role, resource_name="course"):
 
     def wrappers(f):
 
-        @login_required
+        @login_required()
         def decorator(*args, **kws):
             user = g.current_user
             course = get_current_course(resource_name)
@@ -156,7 +170,7 @@ def role_required(role, resource_name="course"):
 
 
 def admin_required(f):
-    @login_required
+    @login_required()
     def decorator(*args, **kws):
         if not g.current_user.admin:
             return api_abort(4031, "Admin Required")

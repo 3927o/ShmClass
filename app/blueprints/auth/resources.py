@@ -58,7 +58,7 @@ class SignupAPI(Resource):
 
 class AccountDelAPI(Resource):
     # url: /account/del
-    method_decorators = [login_required]
+    method_decorators = [login_required()]
 
     def delete(self):
         code = user_del_reqparser.parse_args()["verify_code"]
@@ -73,7 +73,7 @@ class AccountDelAPI(Resource):
 
 class ResetPwdAPI(Resource):
     # url: /account/pwd/reset
-    method_decorators = [login_required]
+    method_decorators = [login_required()]
 
     def post(self):
         data = reset_pwd_reqparser.parse_args()
@@ -90,7 +90,7 @@ class ResetPwdAPI(Resource):
 
 class ResetEmailAPI(Resource):
     # url: /account/email/reset
-    method_decorators = [login_required]
+    method_decorators = [login_required()]
 
     def post(self):
         data = reset_email_reqparser.parse_args()

@@ -1,7 +1,6 @@
 from .course import register_recourse_course
-from .document import register_recourse_document
 from .discussion import register_recourse_discussion
-from .movie import register_recourse_movie
+from .media import register_recourse_media
 from .notice import register_recourse_notice
 from .task import register_recourse_task
 
@@ -9,7 +8,6 @@ from .task import register_recourse_task
 def register_resources(api):
     register_recourse_notice(api)
     register_recourse_task(api)
-    register_recourse_movie(api)
     register_recourse_discussion(api)
-    register_recourse_document(api)
+    register_recourse_media(api)
     register_recourse_course(api)

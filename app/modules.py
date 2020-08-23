@@ -2,6 +2,7 @@ import redis
 import pickle
 import random
 import os
+from math import ceil
 from uuid import uuid4 as uuid
 from time import time
 
@@ -93,6 +94,14 @@ class User(db.Model):
 
         return data
 
+    @staticmethod
+    def list_to_json(users):
+        data = {
+            "count": len(users),
+            "items": [user.to_json() for user in users]
+        }
+        return data
+
     def like(self, resource_id, resource_type):
         prefix = "like_{}:".format(resource_type)
         key = prefix + resource_id
@@ -153,6 +162,14 @@ class Student(db.Model):
             }
             data.update(data_detail)
 
+        return data
+
+    @staticmethod
+    def list_to_json(students):
+        data = {
+            "count": len(students),
+            "items": [student.to_json() for student in students]
+        }
         return data
 
 
@@ -231,12 +248,12 @@ class Course(db.Model):
             "avatar": Media.load_media_from_uuid(self.avatar, return_model=True).url if self.avatar is not None else None,
             "introduce": self.introduce,
             "public": self.public,
-            "create_status": 1 if g.current_user == self.teacher else 0,
-            "join_status": 1 if self in g.current_user.courses else 0,
+            "create_status": 1 if g.current_user.teacher == self.teacher else 0,
+            "join_status": 1 if self in g.current_user.student.courses else 0,
             "start_at": format_time(self.start_at),
             "end_at": format_time(self.end_at),
             "time_excess": not self.start_at <= time() <= self.end_at,
-            "teacher_name": self.teacher.name if self.teacher.name is not None else self.teacher.nickname
+            "teacher_name": self.teacher.user.name if self.teacher.user.name is not None else self.teacher.user.nickname
         }
         if detail:
             data_detail = {
@@ -262,7 +279,7 @@ class Course(db.Model):
 
     def to_json_as_teacher(self):
         data = {
-            "self": request.host_url[0:-1] + url_for('course_bp.courses', cid=self.id),
+            "self": request.host_url[0:-1] + url_for('course_bp.course', cid=self.id),
             "id": self.id,
             "name": self.name,
             "avatar": Media.load_media_from_uuid(self.avatar, return_model=True).url if self.avatar is not None else None,
@@ -431,7 +448,6 @@ class Task(db.Model):
             "create_at": format_time(self.create_at)
         }
         return data
-
 
     def to_json_as_course(self, **options):
         if g.current_user.id == self.teacher.user.id:
@@ -1050,3 +1066,24 @@ def create_commit(course, expires):
     new_commit['unfinished'] = unfinished
     new_commit['id'] = uuid4()
     return new_commit
+
+
+def page_to_json(class_type, items, **options):
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 20))
+
+    length = len(items)
+    items = items[(page - 1) * per_page:page * per_page]
+
+    data = class_type.list_to_json(items, **options)
+
+    data_pagination = {
+        "max_page": ceil(length/per_page),
+        "have_next": 1 if length > page * per_page else 0,
+        "have_prev": 1 if page != 1 else 0,
+        "next_page": request.base_url + "?page={}&per_page={}".format(page+1, per_page),
+        "prev_page": request.base_url + "?page={}&per_page={}".format(page-1, per_page)
+    }
+    data.update(data_pagination)
+
+    return data
