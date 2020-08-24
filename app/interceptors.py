@@ -159,7 +159,7 @@ def role_required(role, resource_name="course"):
                 return api_abort(4041, "resource's course not found")
 
             real_role = user.judge_role(course)
-            if role != real_role:
+            if role != real_role and not (role == "student" and real_role == "teacher"):
                 return api_abort(4030, "you are not the {}".format(role))
 
             resp = f(*args, **kws)
@@ -182,5 +182,5 @@ def admin_required(f):
 def find_resource_id(id_name):
     resource_id = request.view_args.get(id_name, None)
     if resource_id is None:
-        resource_id = request.args.get(id_name, None)
+        resource_id = request.values.get(id_name, None)
     return resource_id

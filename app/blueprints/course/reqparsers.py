@@ -12,3 +12,14 @@ course_put_reqparser = RequestParser()
 course_put_reqparser.add_argument("introduce", type=str, location="json")
 course_put_reqparser.add_argument("start_at", type=float, location="json")
 course_put_reqparser.add_argument("end_at", type=float, location="json")
+
+upload_reqparser = RequestParser()
+upload_reqparser.add_argument('chapter_id', type=str, required=True)
+upload_reqparser.add_argument('name', type=str, required=True)
+upload_reqparser.add_argument("media_type", type=str, required=True, choices=("document", "movie"))
+
+media_list_reqparser = RequestParser()
+media_list_reqparser.add_argument("media_type", type=str, required=True, choices=("document", "movie"))
+
+chapter_create_reqparser = RequestParser()
+chapter_create_reqparser.add_argument("chapter_name", type=str, required=True)
