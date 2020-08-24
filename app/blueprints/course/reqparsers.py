@@ -23,3 +23,10 @@ media_list_reqparser.add_argument("media_type", type=str, required=True, choices
 
 chapter_create_reqparser = RequestParser()
 chapter_create_reqparser.add_argument("chapter_name", type=str, required=True)
+
+discussion_create_reqparser = RequestParser()
+discussion_create_reqparser.add_argument('content', type=str, required=True, location='json')
+
+comment_reqparser = RequestParser()
+comment_reqparser.add_argument('content', type=str, required=True, location='json')
+comment_reqparser.add_argument('reply', type=str, required=False, location='json')

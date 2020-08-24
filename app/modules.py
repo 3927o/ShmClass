@@ -950,6 +950,7 @@ class Comment(db.Model):
         self.content = content
         self.reply = reply
         self.replies = pickle.dumps([])
+        self.id = uuid4()
 
     def to_json(self):
         replies = []
@@ -972,11 +973,13 @@ class Comment(db.Model):
     @staticmethod
     def list_to_json(comments):
         comment_list = []
+        count = len(comments)
         for comment in comments:
             if comment.reply is None:
                 comment_list.append(comment.to_json())
+                count -= 1
         data = {
-            "count": len(comments),
+            "count": count,
             "comments": comment_list
         }
         return data
@@ -1002,6 +1005,10 @@ class Comment(db.Model):
         else:
             data['prev_page'] = None
         return data
+
+    @property
+    def course(self):
+        return self.discussion.course
 
 
 class Notice(db.Model):
