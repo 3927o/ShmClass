@@ -30,3 +30,10 @@ discussion_create_reqparser.add_argument('content', type=str, required=True, loc
 comment_reqparser = RequestParser()
 comment_reqparser.add_argument('content', type=str, required=True, location='json')
 comment_reqparser.add_argument('reply', type=str, required=False, location='json')
+
+notice_create_reqparser = RequestParser()
+notice_create_reqparser.add_argument('title', type=str, required=True, location='json')
+notice_create_reqparser.add_argument('content', type=str, required=True, location='json')
+
+commit_create_reqparser = RequestParser()
+commit_create_reqparser.add_argument("expires", type=int, required=True, location="json")

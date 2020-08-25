@@ -1,3 +1,4 @@
+import redis
 import pickle
 from flask import g
 from flask_restful import Resource
@@ -5,9 +6,12 @@ from flask_restful import Resource
 from app.interceptors import resource_found_required, role_required
 from app.helpers import make_resp, api_abort
 from app.modules import Discussion, Comment, page_to_json
-from app.extensions import db
+from app.extensions import db, pool
 
 from ..reqparsers import discussion_create_reqparser, comment_reqparser
+
+
+r = redis.Redis(connection_pool=pool)
 
 
 class DiscussionAPI(Resource):

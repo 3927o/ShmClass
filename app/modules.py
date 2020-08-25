@@ -68,10 +68,10 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
     def is_teacher(self, course):
-        return course.teacher_id == self.id
+        return course.teacher == self.teacher
     
     def is_student(self, course):
-        return self in course.students
+        return self.student in course.students
 
     def to_json(self, detail=False):
         data = {
@@ -1056,23 +1056,99 @@ class Notice(db.Model):
         return data
 
 
-def create_commit(course, expires):
-    begin = time()
-    end = begin + expires
-    new_commit = dict()
-    new_commit['begin'] = format_time(begin)
-    new_commit['end'] = format_time(end)
-    finished = []
-    unfinished = []
-    for user in course.students:
-        d = dict()
-        d["id"] = user.id
-        d["name"] = user.name
-        unfinished.append(d)
-    new_commit['finished'] = finished
-    new_commit['unfinished'] = unfinished
-    new_commit['id'] = uuid4()
-    return new_commit
+class Commit:
+
+    def __init__(self, course, expires):
+        self.id = uuid4()
+        self.begin = time()
+        self.end = self.begin + expires
+        self.finished = list()
+        self.unfinished = list()
+        for student in course.students:
+            self.unfinished.append(student.user.name)
+
+        r.lpush("commits:" + str(course.id), pickle.dumps(self))
+
+    def __getitem__(self, item):
+        if hasattr(self, item):
+            return getattr(self, item)
+        raise KeyError(item)
+
+    @staticmethod
+    def get_current_commit(course):
+        # get a current effective commit
+        current_commit = r.lindex("commits:{}".format(course.id), 0)
+        if current_commit is not None:
+            current_commit = pickle.loads(current_commit)
+
+        time_now = time()
+        if current_commit is not None and (current_commit.begin < time_now < current_commit.end):
+            return current_commit
+        else:
+            return None
+
+    @staticmethod
+    def get_commits(course):
+        key = "commits:{}".format(course.id)
+        zip_commits = r.lrange(key, 0, r.llen(key))
+
+        commits = list()
+        for zip_commit in zip_commits:
+            commits.append(pickle.loads(zip_commit))
+
+        return commits
+
+    def make_commit(self, student):
+        self.finished.append(student.name)
+        if student.name in self.unfinished:
+            self.unfinished.remove(student.name)
+
+    def statistic(self):
+        return {
+            "finished": self.finished,
+            "unfinished": self.unfinished,
+            "count_finished": len(self.finished),
+            "count_unfinished": len(self.unfinished),
+            "finish_rate": len(self.finished) / (len(self.finished) + len(self.unfinished))
+            if len(self.finished) is not 0 else 0
+        }
+
+    def json(self):
+        return {
+            "id": self.id,
+            "finished": self.finished,
+            "unfinished": self.unfinished,
+            "begin": self.begin,
+            "end": self.end
+        }
+
+    @staticmethod
+    def validate_commit_time(course_id, expires):
+        begin = time()
+        end = begin + expires
+        if begin > end:
+            return False, "invalid time"
+
+        old_commit = r.lindex("commits:" + str(course_id), 0)
+        if old_commit is None:
+            return True, "OK"
+
+        old_commit = pickle.loads(old_commit)
+        if old_commit['end'] > begin:
+            return False, "already exist a commit now"
+
+        return True, "OK"
+
+    @staticmethod
+    def list_to_json(commits, statistic=False):
+        data = {
+            "count": len(commits)
+        }
+        if statistic:
+            data["items"] = [commit.statistic() for commit in commits]
+        else:
+            data['items'] = [commit.json() for commit in commits]
+        return data
 
 
 def page_to_json(class_type, items, **options):
