@@ -3,7 +3,7 @@ from flask_mail import Message
 
 from app.extensions import mail, celery
 
-from app.sms.templates import verify_code_t
+from app.sms.templates import verify_code_t, course_tips_t
 
 
 def send_mail(template, recipients):
@@ -22,3 +22,16 @@ def send_verify_code_mail(code, recipients):
     template.format(code)
 
     send_mail(template, recipients)
+
+
+def send_tips_mail(course, resource_type):
+    recipients = []
+
+    template = course_tips_t()
+    template.format(course.name, resource_type)
+
+    for student in course.students:
+        recipients.append(student.user.email)
+
+    if recipients:
+        send_mail(template, recipients)

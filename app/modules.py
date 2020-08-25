@@ -1029,7 +1029,7 @@ class Notice(db.Model):
     def to_json(self, detail=False):
 
         read = 0
-        key = "read:{}".format(self.id)
+        key = "notice:read:{}".format(self.id)
         if r.sismember(key, g.current_user.id):
             read = 1
 

@@ -6,6 +6,7 @@ from app.interceptors import resource_found_required, role_required
 from app.helpers import make_resp, api_abort
 from app.modules import Chapter, Media, page_to_json
 from app.extensions import db
+from app.sms.mail import send_tips_mail
 
 from ..reqparsers import upload_reqparser, media_list_reqparser, chapter_create_reqparser
 
@@ -69,6 +70,7 @@ class MediaUploadAPI(Resource):
         chapters_media = pickle.dumps(media_uuid_list)
         setattr(g.current_chapter, media_type + "s", chapters_media)
 
+        send_tips_mail(g.current_course, "课件")
         db.session.commit()
         resp = new_media.to_json()
         return make_resp(resp)

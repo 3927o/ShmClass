@@ -7,6 +7,7 @@ from app.interceptors import resource_found_required, role_required
 from app.helpers import make_resp, api_abort
 from app.extensions import db, pool
 from app.modules import Notice, Commit, page_to_json
+from app.sms.mail import send_tips_mail
 
 from ..reqparsers import notice_create_reqparser, commit_create_reqparser
 
@@ -52,9 +53,7 @@ class NoticeListAPI(Resource):
         new_notice = Notice(data['title'], data['content'])
         new_notice.course = g.current_course
 
-        # students = new_notice.course.students
-        # for student in students:
-        #     send_notice(student, new_notice)
+        send_tips_mail(g.current_course, "通知")
 
         db.session.add(new_notice)
         db.session.commit()
@@ -88,6 +87,7 @@ class CommitAPI(Resource):
             return api_abort(4004, message)
 
         new_commit = Commit(g.current_course, data['expires'] * 60)
+        send_tips_mail(g.current_course, "签到")
         return make_resp(new_commit.json())
 
     def put(self, cid):
@@ -130,6 +130,6 @@ class CommitStatisticsAPI(Resource):
 
 def register_recourse_notice(api):
     api.add_resource(NoticeAPI, "/<int:cid>/notices/<string:notice_id>", endpoint="notice")
-    api.add_resource(NoticeListAPI, "/<int:id>/notices", endpoint="notices")
+    api.add_resource(NoticeListAPI, "/<int:cid>/notices", endpoint="notices")
     api.add_resource(CommitAPI, "/<int:cid>/commit", endpoint="statistic")
     api.add_resource(CommitStatisticsAPI, "/<int:cid>/commit/statistics")
