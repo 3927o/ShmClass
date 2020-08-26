@@ -37,3 +37,20 @@ notice_create_reqparser.add_argument('content', type=str, required=True, locatio
 
 commit_create_reqparser = RequestParser()
 commit_create_reqparser.add_argument("expires", type=int, required=True, location="json")
+
+task_create_reqparser = RequestParser()
+task_create_reqparser.add_argument("type", type=str, required=True)
+task_create_reqparser.add_argument("name", type=str, required=True)
+task_create_reqparser.add_argument("t_begin", type=float, required=True)
+task_create_reqparser.add_argument("t_end", type=float, required=True)
+task_create_reqparser.add_argument("problems", required=True)
+task_create_reqparser.add_argument("ans_visible", type=str, required=True)
+task_create_reqparser.add_argument("introduce", type=str, required=False)
+task_create_reqparser.add_argument("expires", type=float)
+
+answer_submit_reqparser = RequestParser()
+answer_submit_reqparser.add_argument('answers', type=str, required=True)
+
+check_answer_reqparser = RequestParser()
+check_answer_reqparser.add_argument('check_res', type=str, required=True, location='json')
+check_answer_reqparser.add_argument('task_answer_id', type=str, required=True, location='json')

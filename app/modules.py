@@ -389,14 +389,17 @@ class Task(db.Model):
         self.expires = expires
 
     def to_json_as_student(self, detail=False):
-        user = g.current_user.id
+        user = g.current_user
+        if hasattr(user, "user"):
+            user = user.user
+
         key = "task_finished:"+str(self.id)
         if not r.sismember(key, user.id):
             finished = False
         else:
             finished = True
         data = {
-            "self": request.host_url[0:-1] + url_for('task_bp.task', tid=self.id),
+            "self": request.host_url[0:-1] + url_for('course_bp.task', tid=self.id),
             "type": self.type,
             "id": self.id,
             "task_name": self.name,
@@ -436,7 +439,7 @@ class Task(db.Model):
 
     def to_json_as_teacher(self):
         data = {
-            "self": request.host_url[0:-1] + url_for('task_bp.task', tid=self.id),
+            "self": request.host_url[0:-1] + url_for('course_bp.task', tid=self.id),
             "type": self.type,
             "id": self.id,
             "task_name": self.name,
@@ -463,32 +466,9 @@ class Task(db.Model):
         bp_name = bp_map[type_]
         schema = schema_map[type_]
         data = {
-            "self": request.host_url[0:-1] + url_for(bp_name + ".tasks"),
             "count": len(tasks),
             "tasks": [schema(task, **options) for task in tasks]
         }
-        return data
-
-    @staticmethod
-    def page_to_json(pagination, user, cid):
-        page = pagination.page
-        per_page = pagination.per_page
-        max_page = pagination.pages
-        tasks = pagination.items
-        has_next = pagination.has_next
-        has_prev = pagination.has_prev
-        data = Task.list_to_json(tasks, user)
-        data['max_page'] = max_page
-        data['has_next'] = has_next
-        data['has_prev'] = has_prev
-        if has_next:
-            data['next_page'] = request.host_url[0:-1] + url_for("course_bp.tasks", per_page=per_page, page=page + 1, cid=cid)
-        else:
-            data['next_page'] = None
-        if has_prev:
-            data['prev_page'] = request.host_url[0:-1] + url_for("course_bp.tasks", per_page=per_page, page=page - 1, cid=cid)
-        else:
-            data['prev_page'] = None
         return data
 
     def judge_max_score(self):
@@ -516,9 +496,9 @@ class Task(db.Model):
         for answer in answers:
             if answer.score >= pass_line:
                 count_pass += 1
-                pass_detail.append(answer.student.name)
+                pass_detail.append(answer.student.user.name)
             else:
-                fail_detail.append(answer.student.name)
+                fail_detail.append(answer.student.user.name)
             score_sum += answer.score
             section_count[int(answer.score/10)*10] += 1
         data = {
@@ -531,8 +511,8 @@ class Task(db.Model):
         }
         if detail:
             data_detail = {
-                "finished_detail": [student.name for student in finished],
-                "unfinished_detail": [student.name for student in unfinished],
+                "finished_detail": [student.user.name for student in finished],
+                "unfinished_detail": [student.user.name for student in unfinished],
                 "pass_detail": pass_detail,
                 "fail_detail": fail_detail,
                 "section_count": section_count
@@ -574,19 +554,21 @@ class Problem(db.Model):
 
     def __init__(self, order, type_, content=None, medias=None, max_score=5, answer=None, answer_detail=None):
         """
-        :param medias: a list containing medias's uuid
+        :param medias: a list containing medias' uuid
         :param answer: when type is "select", expected ['A' | 'B' | 'C' | 'D'].
                        when type is "blank", expected a list of answer
         :param answer_detail: expected a dict, dict example: {"type": ['media', 'text'], "content":"text or uuid"}
         """
         self.type = type_
-        self.content = content
+        self.content = pickle.dumps(content)
         self.max_score = max_score
         self.order = order
         self.answer_detail = answer_detail
         if medias is not None:
             self.media = pickle.dumps(medias)
         if answer is not None:
+            if isinstance(answer, str):
+                answer = [answer]
             self.answer = pickle.dumps(answer)
 
     def to_json(self, return_answer=False):
@@ -594,7 +576,7 @@ class Problem(db.Model):
             "type": self.type,
             "order": self.order,
             "id": self.id,
-            "content": self.content if self.type not in current_app.config['SELECT_TYPE'] else pickle.loads(self.content),
+            "content": pickle.loads(self.content),
             "medias": Media.load_medias_from_uuid_list(pickle.loads(self.media)) if self.media is not None else None,
             "max_score": self.max_score,
             "create_at": format_time(self.create_at),
@@ -629,7 +611,7 @@ class Problem(db.Model):
         correct_detail = []
 
         for answer in answers:
-            student = answer.student.name
+            student = answer.student.user.name
             score_sum += answer.score
             if answer.score >= pass_line:
                 count_pass += 1
@@ -655,6 +637,20 @@ class Problem(db.Model):
 
         return data
 
+    @staticmethod
+    def create_prob(data):
+        # expected a dict contain prob info
+        order = data['order']
+        prob_type = data['type']
+        content = data['content']
+        max_score = data['max_score']
+        answer = data['answer']
+        answer_detail = data['answer_detail']
+        medias = request.files.getlist('problem' + str(order), None)
+        media_uuid_list = Media.save_medias(medias, 'problem')
+        new_prob = Problem(order, prob_type, content, media_uuid_list, max_score, answer, answer_detail)
+        return new_prob
+
 
 class TaskAnswer(db.Model):
     id_name = "task_answer_id"
@@ -678,7 +674,7 @@ class TaskAnswer(db.Model):
 
     def to_json(self,detail=False):
         data = {
-            "uuid": self.id,
+            "id": self.id,
             "status": self.status,
             "score": self.score,
             "create_at": format_time(self.create_at),
@@ -702,6 +698,15 @@ class TaskAnswer(db.Model):
             score += answer.score
         self.score = score
         return score
+
+    @staticmethod
+    def delete(task_answer):
+        for answer in task_answer.answers:
+            if answer.media is not None:
+                medias = Media.load_medias_from_uuid_list(pickle.loads(answer.media), return_model=True)
+                for media in medias:
+                    Media.delete(media)
+        db.session.delete(task_answer)
 
 
 class Answer(db.Model):
@@ -767,7 +772,7 @@ class Answer(db.Model):
         answers = pickle.loads(prob.answer) if prob.answer is not None else None
         my_ans = pickle.loads(self.content)
         max_score = prob.max_score
-        if prob.type is 'select':
+        if prob.type in ['select', 'mselect', 'judge']:
             answers = set(answers)
             my_ans = set(my_ans)
             if answers == my_ans:
@@ -783,6 +788,19 @@ class Answer(db.Model):
             score = 0
         self.score = score
         return score
+
+    @staticmethod
+    def create_answer(answer, student, problem):
+        content = answer.get('content')
+        order = answer.get("order")
+        medias = request.files.getlist('answer' + str(order))
+        media_uuid_list = Media.save_medias(medias, 'answer') if len(medias) is not 0 else []
+        new_answer = Answer(order, content, media_uuid_list)
+        new_answer.student = student
+        new_answer.problem = problem
+        if new_answer.problem.type is not "subjective":
+            new_answer.judge_score()
+        return new_answer
 
 
 class Media(db.Model):
@@ -867,18 +885,19 @@ class Media(db.Model):
             return media
         return media.to_json()
 
-    def delete(self):
-        path = current_app.static_folder + self.url.replace(request.host_url[:-1] + current_app.static_url_path, "")
+    @staticmethod
+    def delete(media):
+        path = current_app.static_folder + media.url.replace(request.host_url[:-1] + current_app.static_url_path, "")
         try:
             os.remove(os.path.abspath(path))
         except FileNotFoundError:
             pass
+        db.session.delete(media)
 
     @staticmethod
     def random_avatar(return_model=False):
         url = current_app.config["HOST_URL"] + current_app.static_url_path + \
               "/avatars/user/banner{}.jpg".format(random.choice([6, 7, 8, 13, 14]))
-        print(url)
         new_avatar = Media(url)
         db.session.add(new_avatar)
         db.session.commit()
