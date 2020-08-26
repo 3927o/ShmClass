@@ -111,6 +111,18 @@ class User(db.Model):
         prefix = "like_{}:".format(resource_type)
         key = prefix + resource_id
         return r.sismember(key, self.id)
+
+    def collect(self, resource_id, resource_type):
+        prefix = "collect_{}:".format(resource_type)
+        user_collect_key = "user:{}:collect_{}".format(self.id, resource_type)
+        key = prefix + resource_id
+        r.sadd(key, self.id)
+        r.sadd(user_collect_key, resource_id)
+
+    def collected(self, resource_id, resource_type):
+        prefix = "collect_{}:".format(resource_type)
+        key = prefix + resource_id
+        return r.sismember(key, self.id)
     
     def judge_role(self, course):
         if self.is_teacher(course):
@@ -929,6 +941,8 @@ class Discussion(db.Model):
         data = {
             "id": self.id,
             "content": self.content,
+            "collections": r.scard("collect_discussion:{}".format(str(self.id))),
+            "collected": g.current_user.collected(str(self.id), "discussion"),
             "post_at": format_time(self.creat_at),
             "update_at": format_time(self.update_at),
             "user": self.master.to_json()

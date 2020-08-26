@@ -96,12 +96,21 @@ class LeaveCourseAPI(Resource):
         return make_resp("OK")
 
 
-url_prefix = ""
+class CourseRecommendAPI(Resource):
+    # url: /course/recommend?count_items=<int>
+    method_decorators = [login_required(allowed_anonymous=True)]
+
+    def get(self):
+        count = request.args.get("count_items", 5)
+        courses = Course.query.all()[-1*count:]
+        data = Course.list_to_json(courses)
+        return make_resp(data)
 
 
 def register_recourse_course(api):
-    api.add_resource(CourseInfoAPI, url_prefix + "/<int:cid>", endpoint="course")
-    api.add_resource(CourseListAPI, url_prefix + "/course_list", endpoint="courses")
-    api.add_resource(CourseStudentsAPI, url_prefix + "/<int:cid>/students")
-    api.add_resource(JoinCourseAPI, url_prefix + "/<int:cid>/join")
-    api.add_resource(LeaveCourseAPI, url_prefix + "/<int:cid>/leave")
+    api.add_resource(CourseInfoAPI, "/<int:cid>", endpoint="course")
+    api.add_resource(CourseListAPI, "/course_list", endpoint="courses")
+    api.add_resource(CourseStudentsAPI, "/<int:cid>/students")
+    api.add_resource(JoinCourseAPI, "/<int:cid>/join")
+    api.add_resource(LeaveCourseAPI, "/<int:cid>/leave")
+    api.add_resource(CourseRecommendAPI, "/recommend")

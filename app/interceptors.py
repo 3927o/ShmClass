@@ -89,6 +89,7 @@ def login_required(allowed_anonymous=False):
                     return api_abort(4010, "Bad Token")
                 else:
                     current_user = User("anonymous", "anonymous@anonymous.com", "anonymous")
+                    current_user.id = 0
 
             g.current_user = current_user
             resp = f(*args, **kws)

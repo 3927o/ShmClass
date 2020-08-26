@@ -1,9 +1,9 @@
 import redis
 import pickle
-from flask import g
+from flask import g, request
 from flask_restful import Resource
 
-from app.interceptors import resource_found_required, role_required
+from app.interceptors import resource_found_required, role_required, login_required
 from app.helpers import make_resp, api_abort
 from app.modules import Discussion, Comment, page_to_json
 from app.extensions import db, pool
@@ -95,9 +95,52 @@ class CommentLikeAPI(Resource):
         return make_resp("OK")
 
 
+class DiscussionCollectAPI(Resource):
+    # url: /courses/<int:cid>/discussions/<string:discuss_id>/collect
+    method_decorators = [role_required("student", "discussion"), resource_found_required("discussion")]
+
+    def post(self, cid, discus_id):
+        if g.current_user.collected(discus_id, "discussion"):
+            return api_abort(4006, "already collected this item")
+        g.current_user.collect(discus_id, "discussion")
+        return make_resp("OK")
+
+
+class DiscussionCollectListAPI(Resource):
+    # url: /course/discussions
+    method_decorators = [login_required()]
+
+    def get(self):
+        key = "user:{}:collect_{}".format(g.current_user.id, "discussion")
+        discussion_id_list = list(r.smembers(key))
+        discussions = []
+        for discussion_id in discussion_id_list:
+            discussion_id = discussion_id.decode('utf-8')
+            discussion = Discussion.query.get(discussion_id)
+            if discussion is not None:
+                discussions.append(discussion)
+
+        resp = page_to_json(Discussion, discussions)
+        return make_resp(resp)
+
+
+class DiscussionRecommendAPI(Resource):
+    # url: /course/discussions/recommend?count_items=<int>
+    method_decorators = [login_required(allowed_anonymous=True)]
+
+    def get(self):
+        count = int(request.args.get("count_items", 5))
+        discussions = Discussion.query.all()[-1*count:]
+        data = Discussion.list_to_json(discussions)
+        return make_resp(data)
+
+
 def register_recourse_discussion(api):
     api.add_resource(DiscussionAPI, "/<int:cid>/discussions/<string:discus_id>")
     api.add_resource(DiscussionListAPI, "/<int:cid>/discussions")
     api.add_resource(CommentAPI, "/<int:cid>/comment/<string:comment_id>")
     api.add_resource(CommentListAPI, "/<int:cid>/discussions/<string:discus_id>/comments")
     api.add_resource(CommentLikeAPI, "/<int:cid>/comment/<string:comment_id>/like")
+    api.add_resource(DiscussionCollectAPI, "/<int:cid>/discussions/<string:discus_id>/collect")
+    api.add_resource(DiscussionCollectListAPI, "/discussions/collection")
+    api.add_resource(DiscussionRecommendAPI, "/discussions/recommend")
