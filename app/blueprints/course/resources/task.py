@@ -1,3 +1,4 @@
+# encoding:utf-8
 import redis
 from time import time
 from flask import g, request
@@ -7,6 +8,7 @@ from app.modules import Problem, Task, page_to_json, TaskAnswer, Answer, Media
 from app.interceptors import role_required, resource_found_required
 from app.helpers import make_resp, api_abort
 from app.extensions import pool, db
+from app.sms.mail import send_tips_mail
 
 from ..reqparsers import task_create_reqparser, answer_submit_reqparser, check_answer_reqparser
 
@@ -53,6 +55,8 @@ class TaskListAPI(Resource):
         course.tasks.append(new_task)
         new_task.teacher = course.teacher
         db.session.commit()
+
+        send_tips_mail(course, "作业")
 
         resp = new_task.to_json_as_student(detail=True)
         return make_resp(resp)

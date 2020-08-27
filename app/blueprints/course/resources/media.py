@@ -1,3 +1,4 @@
+# encoding:utf-8
 import pickle
 from flask import g, request
 from flask_restful import Resource

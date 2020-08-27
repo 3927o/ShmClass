@@ -32,3 +32,9 @@ def course_tips_t():
     verify_code_body = "您好，您加入的课程[{}]刚刚发布了新的{}，赶紧进入课堂查看吧！"
     verify_code_sub = "[水火木课堂]课程通知"
     return Template(verify_code_body, verify_code_sub)
+
+
+def task_remind_t():
+    verify_code_body = "您好，您加入的课程[{}]有一门作业即将在6小时后截止，请尽快完成喔。"
+    verify_code_sub = "[水火木课堂]作业提醒"
+    return Template(verify_code_body, verify_code_sub)

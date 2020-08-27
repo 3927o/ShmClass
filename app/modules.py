@@ -400,16 +400,16 @@ class Task(db.Model):
             expires *= 60
         self.expires = expires
 
+    def finished(self, user):
+        key = "task_finished:" + str(self.id)
+        return r.sismember(key, user.id)
+
     def to_json_as_student(self, detail=False):
         user = g.current_user
         if hasattr(user, "user"):
             user = user.user
 
-        key = "task_finished:"+str(self.id)
-        if not r.sismember(key, user.id):
-            finished = False
-        else:
-            finished = True
+        finished = self.finished(user)
         data = {
             "self": request.host_url[0:-1] + url_for('course_bp.task', tid=self.id),
             "type": self.type,

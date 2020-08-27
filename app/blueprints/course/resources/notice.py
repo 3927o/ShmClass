@@ -1,3 +1,4 @@
+# encoding:utf-8
 import redis
 import pickle
 from flask import g, request

@@ -1,6 +1,8 @@
+import logging
 from app import create_app
 from app.extensions import db
 from app.modules import User, Course, Media
+
 
 app = create_app("development")
 # with app.app_context():
@@ -9,6 +11,8 @@ app = create_app("development")
 ctx = app.app_context()
 ctx.push()
 db.create_all()
+
+from app.scheduler import task_remind_job
 
 admin = User("3927", "1624497311@qq.com", "123456", True)
 customer = User("lin", "2900303329@qq.com", "123456")
@@ -22,6 +26,13 @@ db.session.add(course1)
 db.session.add(to_del_course)
 db.session.add(test_media)
 db.session.commit()
+
+fh = logging.FileHandler('log.log')
+fh.setLevel(logging.DEBUG)
+app.logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+fh.setFormatter(formatter)
+app.logger.addHandler(fh)
 
 if __name__ == "__main__":
     app.apscheduler.start()
