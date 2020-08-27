@@ -3,7 +3,7 @@ from flask_mail import Message
 
 from app.extensions import mail, celery
 
-from app.sms.templates import verify_code_t, course_tips_t, task_remind_t
+from app.sms.templates import verify_code_t, course_tips_t, task_remind_t, course_end_tips_t
 
 
 def send_mail(template, recipients):
@@ -47,5 +47,18 @@ def send_task_remind_mail(task):
         if not task.finished(student.user):
             recipients.append(student.user.email)
 
+    if recipients:
+        send_mail(template, recipients)
+
+
+def send_course_end_notice_mail(course):
+    recipients = []
+
+    template = course_end_tips_t()
+    template.format(course.name)
+
+    for student in course.students:
+        recipients.append(student.user.email)
+    print("recipients:" + str(len(recipients)))
     if recipients:
         send_mail(template, recipients)
