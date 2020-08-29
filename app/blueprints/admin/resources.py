@@ -73,7 +73,7 @@ class CourseImportStuAPI(Resource):
             stu_id_list.append(item["student_id"])
 
         for stu_id in stu_id_list:
-            student = Student.query.filter_by(student_id=stu_id)
+            student = Student.query.filter_by(student_id=stu_id).first()
             if student is not None and student.user.school == school:
                 student.courses.append(g.current_course)
             else:

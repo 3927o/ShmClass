@@ -14,7 +14,7 @@ else:
 class BaseConfig:
 
     SECRET_KEY = os.getenv('SECRET_KEY', os.urandom(16))
-    HOST_URL = "http://thunderclass.mr-lin.site"
+    HOST_URL = "http://shmclass.mr-lin.site"
 
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', prefix + os.path.join(basedir, 'data.db'))
     SQLALCHEMY_TRACK_MODIFICATIONS = False

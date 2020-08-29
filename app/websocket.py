@@ -37,9 +37,9 @@ def join_personal_room(data):
 
 
 def get_system_tips(data):
-    user = g.current_user
-    room = "user:{}".format(user.id)
-    key = "system_tips:{}".format(user.id)
+    uid = data['uid']
+    room = "user:{}".format(uid)
+    key = "system_tips:{}".format(uid)
     r = redis.Redis(connection_pool=pool)
     msgs = list(r.smembers(key))
     socketio.emit("system_tips", msgs, room=room)

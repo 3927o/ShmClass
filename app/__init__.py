@@ -10,7 +10,7 @@ from settings import config
 
 def create_app(config_name=None, **options):
     if config_name is None:
-        config_name = os.getenv("FLASK_CONFIG", 'testing')
+        config_name = os.getenv("FLASK_CONFIG", 'production')
 
     # dispatcher = AppDispatcher(__name__, **options)
     # dispatcher.config.from_object(config[config_name])
